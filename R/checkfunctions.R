@@ -233,8 +233,8 @@ check_X_formula <- function(formula.X = NULL, X = NULL) {
      }
 
      
-check_which_traits <- function(num.traits, which.traits, traits = NULL, y = NULL, num.X, makejagsboralfile_messages = FALSE) {
-     if(num.traits > 0 & makejagsboralfile_messages == FALSE) {
+check_which_traits <- function(num.traits, which.traits, traits = NULL, y = NULL, num.X, makenimbleboralfile_messages = FALSE) {
+     if(num.traits > 0 & makenimbleboralfile_messages == FALSE) {
           if(num.X == 0 & num.traits > 0) 
                stop("num.traits > 0 suggests traits are to be regressed against covariates X, so please supply X.") 
           if(is.null(which.traits)) 
@@ -250,7 +250,7 @@ check_which_traits <- function(num.traits, which.traits, traits = NULL, y = NULL
           }
 
           
-     if(num.traits > 0 & makejagsboralfile_messages == TRUE) {
+     if(num.traits > 0 & makenimbleboralfile_messages == TRUE) {
           if(num.X == 0) 
                stop("num.traits > 0 suggests traits are to be regressed against covariates X, so please set num.X > 0.") 
           if(is.null(which.traits)) 

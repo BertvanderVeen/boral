@@ -1,7 +1,7 @@
 ## Produce the correlation due to similarity of responses to X
 get.enviro.cor <- function(object, est = "median", prob = 0.95) {
 
-     if(is.null(object$jags.model)) 
+     if(is.null(object$nimble.model)) 
           stop("MCMC samples not found.")
      fit.mcmc <- get.mcmcsamples(object)
      y <- object$y
@@ -53,7 +53,7 @@ get.enviro.cor <- function(object, est = "median", prob = 0.95) {
 	
 ## Produce the residual correlation based on latent variables
 get.residual.cor <- function(object, est = "median", prob = 0.95) {
-     if(is.null(object$jags.model)) 
+     if(is.null(object$nimble.model)) 
           stop("MCMC samples not found.")
 
      fit.mcmc <- get.mcmcsamples(object)

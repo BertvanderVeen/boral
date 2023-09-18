@@ -111,7 +111,7 @@ predict.boral <- function(object, newX = NULL, newrow.ids = NULL, newranef.ids =
           }
           
           
-     if(is.null(object$jags.model)) 
+     if(is.null(object$nimble.model)) 
           stop("MCMC samples not found.")
 
     

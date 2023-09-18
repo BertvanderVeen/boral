@@ -4,7 +4,7 @@ calc.varpart <- function(object, groupX = NULL) {
     num.lv <- object$num.lv
     if(is.null(object$X))
         stop("Variance partitioning is not particularly useful when there are no covariates X included in the model.")
-    if(is.null(object$jags.model)) 
+    if(is.null(object$nimble.model)) 
         stop("MCMC samples not found.")
     if(!is.null(groupX)) { if(length(groupX) != (object$num.X+1)) 
         stop("If groupX is supplied, then it must be a vector with the length (object$num.X + 1).") }

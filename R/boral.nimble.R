@@ -36,8 +36,22 @@
 boral <- function(y, ...)
      UseMethod("boral")
 
-
+# y=spider$abund; X = NULL; formula.X = NULL; X.ind = NULL; traits = NULL; which.traits = NULL; family; trial.size = 1;
+# lv.control = list(num.lv = 0, type = "independent", distmat = NULL); row.eff = "none"; row.ids = NULL; ranef.ids = NULL;
+# offset = NULL; save.model = FALSE; calc.ics = FALSE;
+# mcmc.control = list(n.burnin = 10000, n.iteration = 40000, n.thin = 30, seed = NULL)
+# prior.control = list(type = c("normal","normal","normal","uniform"),hypparams = c(10, 10, 10, 30), ssvs.index = -1, ssvs.g = 1e-6, ssvs.traitsindex = -1)
+# do.fit = TRUE; model.name = NULL; num.lv = NULL; family="poisson"
 ## Model is g(mu_{ij}) = row + beta0 + LV_i*theta_j + X_i*beta_j
+source("R/unseenfunctions.R")
+source("R/auxilaryfunctions.R")
+source("R/checkfunctions.R")
+source("R/makenimbleboralmodel.R")
+source("R/makenimbleboralnullmodel.R")
+source("R/setup_respfamilies.R")
+source("R/hpdintervals.R")
+source("R/lvsplots.R")
+
 boral.default <- function(y, X = NULL, formula.X = NULL, X.ind = NULL, traits = NULL, which.traits = NULL, family, trial.size = 1,  
      lv.control = list(num.lv = 0, type = "independent", distmat = NULL), row.eff = "none", row.ids = NULL, ranef.ids = NULL, 
      offset = NULL, save.model = FALSE, calc.ics = FALSE, 
@@ -135,21 +149,21 @@ boral.default <- function(y, X = NULL, formula.X = NULL, X.ind = NULL, traits = 
 
     
      ##-----------------------------
-     ## MAKE JAGS SCRIPT
+     ## MAKE Nimble SCRIPT
      ##-----------------------------
      n <- nrow(y)
      p <- ncol(y)
      n.chains <- 1; ## Run one chain only to avoid arbitrary rotation problems
      if(num.lv > 0) 
-          make.jagsboralmodel(family = family, num.X = num.X, X.ind = X.ind, num.traits = num.traits, which.traits = which.traits, lv.control = lv.control, 
+          make.nimbleboralmodel(family = family, num.X = num.X, X.ind = X.ind, num.traits = num.traits, which.traits = which.traits, lv.control = lv.control, 
                row.eff = row.eff, row.ids = row.ids, ranef.ids = ranef.ids, offset = offset, trial.size = complete_trial_size, 
                n = n, p = p, model.name = model.name, prior.control = prior.control)
      if(num.lv == 0)  
-          make.jagsboralnullmodel(family = family, num.X = num.X, X.ind = X.ind, num.traits = num.traits, which.traits = which.traits, 
+          make.nimbleboralnullmodel(family = family, num.X = num.X, X.ind = X.ind, num.traits = num.traits, which.traits = which.traits, 
                row.eff = row.eff, row.ids = row.ids, ranef.ids = ranef.ids, offset = offset, trial.size = complete_trial_size, 
                n = n, p = p, model.name = model.name, prior.control = prior.control)
      if(!do.fit) { 
-          message("JAGS model file created only. Thank you, come again!")
+          message("Nimble model file created only. Thank you, come again!")
           return() 
           }
      
@@ -157,70 +171,78 @@ boral.default <- function(y, X = NULL, formula.X = NULL, X.ind = NULL, traits = 
      ##-----------------------------
      ## FORM DATA
      ##-----------------------------
-     jags_data <- list("y", "n", "p", "num.lv", "num.X", "num.traits", "num.ord.levels") #num.multinom.levels
+     nimble_data <- list(y = y) #num.multinom.levels
+     nimble_constants = list(n = n, p = p, num.lv = num.lv, num.X = num.X, num.traits = num.traits, num.ord.levels = num.ord.levels)
      if(lv.control$type != "independent") {
           zero.lvs <- rep(1,n)        
           distmat <- lv.control$distmat
           lv.control$distmat <- NULL
-          jags_data <- c(jags_data, "zero.lvs", "distmat")
-          }
+          nimble_data <- c(nimble_data, zero.lvs = zero.lvs, distmat = distmat)
+     }
      if(num.X > 0) {
           if(is.null(X.ind))
-               jags_data <- c(jags_data, "X")
+               nimble_data <- append(nimble_data, list(X = X))
           if(!is.null(X.ind)) {
-               X.ind[X.ind == 1] <- 1e6 ## Modifying this so as to make use of indicator functions in JAGS
-               jags_data <- c(jags_data, "X", "X.ind")
+               X.ind[X.ind == 1] <- 1e6 ## Modifying this so as to make use of indicator functions in nimble
+               nimble_data <- c(nimble_data, list(X = X, X.ind = X.ind))
                }
           }
      if(num.traits > 0) 
-          jags_data <- c(jags_data, "traits")
+          nimble_data <- append(nimble_data, list(traits = traits))
      if(any(family == "ordinal")) { 
           ones <- matrix(1, n, p)
-          jags_data <- c(jags_data, "ones") 
+          nimble_data <- c(nimble_data, ones = ones) 
           }
      if(row.eff != "none") { 
           n.ID <- apply(row.ids, 2, function(x) length(unique(x)))
-          jags_data <- c(jags_data, "row.ids", "n.ID") 
+          nimble_constants <- c(nimble_constants, row.ids = row.ids, n.ID = n.ID) 
           }
      if(!is.null(ranef.ids)) { 
           n.ranefID <- apply(ranef.ids, 2, function(x) length(unique(x)))
-          jags_data <- c(jags_data, "ranef.ids", "n.ranefID") 
+          nimble_constants <- c(nimble_constants, ranef.ids = ranef.ids, n.ranefID = n.ranefID) 
           }
      if(!is.null(offset)) 
-          jags_data <- c(jags_data, "offset")
+          nimble_constants <- c(nimble_data, offset = offset)
             
     
      ##-----------------------------
      ## FORM PARAMETERS
      ##-----------------------------
-     jags_params <- c("lv.coefs")
-     if(num.lv > 0) 
-          jags_params <- c(jags_params, "lvs")
+     nimble_params <- c("lv.coefs")
+     dimensions <- list() # informs nimble of parameter dimensions
+     if(num.lv > 0) {
+          nimble_params <- c(nimble_params, "lvs")
+          dimensions <- append(dimensions, list(lvs = c(n,lv.control$num.lv)))
+     }
      if(lv.control$type != "independent") 
-          jags_params <- c(jags_params, "lv.covparams")
+          nimble_params <- c(nimble_params, "lv.covparams")
      if(row.eff != "none") 
-          jags_params <- c(jags_params, paste0("row.coefs.ID",1:ncol(row.ids)))
+          nimble_params <- c(nimble_params, paste0("row.coefs.ID",1:ncol(row.ids)))
      if(row.eff == "random") 
-          jags_params <- c(jags_params, paste0("row.sigma.ID",1:ncol(row.ids)))
+          nimble_params <- c(nimble_params, paste0("row.sigma.ID",1:ncol(row.ids)))
      if(!is.null(ranef.ids)) 
-          jags_params <- c(jags_params, paste0("ranef.coefs.ID",1:ncol(ranef.ids)), paste0("ranef.sigma.ID",1:ncol(ranef.ids)))
-     if(num.X > 0 & any(family != "multinom")) 
-          jags_params <- c(jags_params, "X.coefs")
-     #if(num.X > 0 & any(family == "multinom")) jags_params <- c(jags_params, "X.multinom.params")
-     if(num.traits > 0) 
-          jags_params <- c(jags_params, "traits.int", "traits.coefs", "trait.sigma")
+          nimble_params <- c(nimble_params, paste0("ranef.coefs.ID",1:ncol(ranef.ids)), paste0("ranef.sigma.ID",1:ncol(ranef.ids)))
+     if(num.X > 0 & any(family != "multinom")) {
+          nimble_params <- c(nimble_params, "X.coefs")
+          dimensions <- append(dimensions,  list(X.coefs = c(p, num.X), X = c(n, num.X)))
+     }
+     #if(num.X > 0 & any(family == "multinom")) nimble_params <- c(nimble_params, "X.multinom.params")
+     if(num.traits > 0) {
+          nimble_params <- c(nimble_params, "traits.int", "traits.coefs", "trait.sigma")
+          dimensions <- append(dimensions,  list(traits.coef = c(p, num.traits), traits = c(num.X, num.traits)))
+     }
      if(any(family == "tweedie")) 
-          jags_params <- c(jags_params, "powerparam")
+          nimble_params <- c(nimble_params, "powerparam")
      if(any(family == "ordinal")) 
-          jags_params <- c(jags_params, "cutoffs", "ordinal.sigma")
+          nimble_params <- c(nimble_params, "cutoffs", "ordinal.sigma")
      if(any(prior.control$ssvs.index == 0)) 
-          jags_params <- c(jags_params, paste0("ssvs.indX", which(prior.control$ssvs.index == 0)))
+          nimble_params <- c(nimble_params, paste0("ssvs.indX", which(prior.control$ssvs.index == 0)))
      if(any(prior.control$ssvs.index > 0)) 
-          jags_params <- c(jags_params, paste0("ssvs.gp", unique(prior.control$ssvs.index[prior.control$ssvs.index > 0])))
+          nimble_params <- c(nimble_params, paste0("ssvs.gp", unique(prior.control$ssvs.index[prior.control$ssvs.index > 0])))
      if(any(unlist(prior.control$ssvs.traitsindex) == 0)) 
-          jags_params <- c(jags_params, paste0("ssvs.traitscoefs", rep(1:(ncol(X)+1), times = sapply(prior.control$ssvs.traitsindex, function(x) sum(x == 0))), unlist(sapply(prior.control$ssvs.traitsindex, function(x) which(x == 0)))))
+          nimble_params <- c(nimble_params, paste0("ssvs.traitscoefs", rep(1:(ncol(X)+1), times = sapply(prior.control$ssvs.traitsindex, function(x) sum(x == 0))), unlist(sapply(prior.control$ssvs.traitsindex, function(x) which(x == 0)))))
 
-          jags.inits <- function() {
+          nimble.inits <- function() {
           initial.list <- list()
           if(any(family %in% "tweedie")) 
                initial.list$numfish = matrix(1, n, sum(family=="tweedie"))
@@ -237,54 +259,66 @@ boral.default <- function(y, X = NULL, formula.X = NULL, X.ind = NULL, traits = 
                     
           return(initial.list)
           }
-
-     if(!is.null(mcmc.control$seed))
-          set.seed(mcmc.control$seed)
+     if(is.null(mcmc.control$seed)){
+      mcmc.control$seed <- sample(1:10000,1) 
+     }
+        set.seed(mcmc.control$seed)
      actual.filename <- model.name
      if(is.null(actual.filename)) 
-          actual.filename <- "jagsboralmodel.txt"
+          actual.filename <- "nimbleboralmodel.txt"
 
 
      ##-----------------------------
      ## THE FIT
      ##-----------------------------
-     jagsfit <- try(suppressWarnings(
-          jags(data = jags_data, inits = jags.inits, parameters.to.save = jags_params, model.file = actual.filename, n.iter = mcmc.control$n.iteration, n.burnin = mcmc.control$n.burnin, n.chains = 1, n.thin = mcmc.control$n.thin)), 
-          silent=TRUE)
-
-     #print(jagsfit)
-     if(inherits(jagsfit,"try-error")) {
-          lookfornegbinerror <- grep("Slicer stuck at value with infinite density", jagsfit[[1]])
-          
-          if(any(family %in% c("ztnegative.binomial","negative.binomial")) & length(lookfornegbinerror) == 1) { 
-               message("MCMC sampling through JAGS failed. This is likely due to the prior on the dispersion (size) parameter of the negative binomial distribution been too uninformative (see below). For instance, if the error message refers to lv.coefs[25,4], then this means the MCMC sampling ran into issues for column (response) 25 in y.\n
-               Please consider the following solutions: 1) remove very rare responses like singletons and doubletons, as they can potentially issus for MCMC sampling, and do not provide much information about the community in general, 2) adopt a tougher prior for the overdispersion parameter e.g., keeping with a uniform prior but reducing hypparams[4], or using a half-cauchy prior, 3) consider switching to a Poisson family for responses which don't appear to be overdispersed;")
-               print(jagsfit) 
-               }
-          else {
-               message("MCMC fitting through JAGS failed:")
-               print(jagsfit) 
-               }
-
-          message("boral fit failed...Exiting. Sorry!") 
-          return()
-          }
+     boralModel <- try(suppressWarnings(nimbleModel(code = eval(parse(file=actual.filename)), name = model.name, data = nimble_data, constants = nimble_constants, dimensions = dimensions)), silent = TRUE)
+     if(inherits(boralModel,"try-error"))message("Constructing the nimble model has failed.")
+     boralModelc <- compileNimble(boralModel)
+     if(inherits(boralModelc,"try-error"))message("Compiling the nimble model has failed.")
+     nimbleMCMC <- try(suppressWarnings(
+          configureMCMC(boralModel, monitors = nimble_params, 
+          niter = mcmc.control$n.iteration, nburnin = mcmc.control$n.burnin, thin = mcmc.control$n.thin, setSeed = mcmc.control$seed, onlySlice =  TRUE,
+          samplesAsCodaMCMC = TRUE)), silent=TRUE)#inits = nimble.inits
+     if(inherits(nimbleMCMC,"try-error"))message("Configuring the MCMC has failed.")
+          nimbleMCMCb <- buildMCMC(nimbleMCMC)
+      if(inherits(nimbleMCMCb,"try-error"))message("Building the MCMC configuration has failed.")
+      nimbleMCMCc <- compileNimble(nimbleMCMCb)
+      if(inherits(nimbleMCMCc,"try-error"))message("Compiling the MCMC configuration has failed.")
+      nimbleSamples <- runMCMC(nimbleMCMCc, niter = mcmc.control$n.iteration, nburnin = mcmc.control$n.burnin, thin = mcmc.control$n.thin, nchains = 1, setSeed = mcmc.control$seed, samplesAsCodaMCMC = TRUE)
+      if(inherits(nimbleSamples,"try-error"))message("Running the MCMC has failed.")
+      
+     #print(nimblefit)
+     # if(inherits(nimblefit,"try-error")) {
+     #      lookfornegbinerror <- grep("Slicer stuck at value with infinite density", nimblefit[[1]])
+     #      
+     #      if(any(family %in% c("ztnegative.binomial","negative.binomial")) & length(lookfornegbinerror) == 1) { 
+     #           message("MCMC sampling through nimble failed. This is likely due to the prior on the dispersion (size) parameter of the negative binomial distribution been too uninformative (see below). For instance, if the error message refers to lv.coefs[25,4], then this means the MCMC sampling ran into issues for column (response) 25 in y.\n
+     #           Please consider the following solutions: 1) remove very rare responses like singletons and doubletons, as they can potentially issus for MCMC sampling, and do not provide much information about the community in general, 2) adopt a tougher prior for the overdispersion parameter e.g., keeping with a uniform prior but reducing hypparams[4], or using a half-cauchy prior, 3) consider switching to a Poisson family for responses which don't appear to be overdispersed;")
+     #           print(nimblefit) 
+     #           }
+     #      else {
+     #           message("MCMC fitting through nimble failed:")
+     #           print(nimblefit) 
+     #           }
+     # 
+     #      message("boral fit failed...Exiting. Sorry!") 
+     #      return()
+     #      }
     
-# 	return(jagsfit)
+# 	return(nimblefit)
      ##-----------------------------
      ## FORMAT INTO BIG MATRIX
      ##-----------------------------
-     fit.mcmcBase <- jagsfit$BUGSoutput
-     fit.mcmc <- mcmc(fit.mcmcBase$sims.matrix, start = 1, thin = mcmc.control$n.thin) 
+       # fit.mcmc <- mcmc(nimblefit, start = 1, thin = mcmc.control$n.thin) 
      if(n.chains == 1)
-          combined_fit_mcmc <- fit.mcmc
+          combined_fit_mcmc <- nimbleSamples
      # 	if(n.chains > 1) {
      # 		get.rhats <- process.rhats(sims.matrix = fit.mcmcBase$sims.matrix)
 
      # 		exceed.rhatcutoff <- sum(sapply(get.rhats, function(x) sum(x > rhat.cutoff)))
      # 		message("There were", exceed.rhatcutoff, "(", 100*exceed.rhatcutoff/sum(sapply(get.rhats,length)), "%) parameters whose Rhat exceeded the prespecified cutoff of", rhat.cutoff, "\n")		
      # 		}	
-     rm(fit.mcmc, fit.mcmcBase)
+     rm(nimbleSamples)
 
 #   	## For any multinomial columns, set the corresponding rows in X.coefs to zero
 # 	if(any(family == "multinom") & num.X > 0) {
@@ -605,7 +639,7 @@ boral.default <- function(y, X = NULL, formula.X = NULL, X.ind = NULL, traits = 
           deprecate_warn("1.6", "boral::get.measures()", details = "All functions to calculate information criteria are being phased out (too hard to maintain)!")
           get_ics <- try(get.measures(y = y, X = X, family = family, trial.size = complete_trial_size, row.eff = row.eff, row.ids = row.ids, offset = offset, num.lv = num.lv, fit.mcmc = combined_fit_mcmc), silent = TRUE)
           if(!inherits(get_ics, "try-error")) {
-               ics <- c(get.dic(jagsfit), get_ics$waic, get_ics$eaic, get_ics$ebic)
+               ics <- c(get.dic(nimblefit), get_ics$waic, get_ics$eaic, get_ics$ebic)
                names_ics <- c("Conditional DIC", "WAIC", "EAIC", "EBIC")
                if(get_ics$do.marglik.ics) 
                     {
@@ -617,7 +651,7 @@ boral.default <- function(y, X = NULL, formula.X = NULL, X.ind = NULL, traits = 
           }
                          
      if(save.model) 
-          out_fit$jags.model <- jagsfit
+          out_fit$nimble.model <- nimblefit
 
      out_fit$call <- match.call()
      out_fit$n <- n

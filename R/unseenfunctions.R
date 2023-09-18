@@ -2,7 +2,7 @@
 ## Unseen functions
 ###############################
     
-## Construct strings for the prior distributions used in makejagsboralmodel and makejagsboralnullmodel
+## Construct strings for the prior distributions used in makenimbleboralmodel and makenimbleboralnullmodel
 construct_prior_strings <- function(x) {
      x$type[1] <- match.arg(x$type[1], choices = c("normal","cauchy","uniform"))
      x$type[2] <- match.arg(x$type[2], choices = c("normal","cauchy","uniform"))
@@ -11,19 +11,19 @@ construct_prior_strings <- function(x) {
 
      
      if(x$type[1] == "normal") 
-          prior.string1 <- paste0("dnorm(0,",1/x$hypparams[1],")")
+          prior.string1 <- paste0("dnorm(0, tau = ",1/x$hypparams[1],")")
      if(x$type[1] == "cauchy") 
-          prior.string1 <- paste0("dt(0,",1/x$hypparams[1],",1)")
+          prior.string1 <- paste0("dt(0, tau = ",1/x$hypparams[1],",1)")
      if(x$type[1] == "uniform") 
           prior.string1 <- paste0("dunif(-",x$hypparams[1],",",x$hypparams[1],")")
 
      if(x$type[2] == "normal") {
-          prior.string2 <- paste0("dnorm(0,", 1/x$hypparams[2], ")")
-          prior.string22 <- paste0("dnorm(0,",1/x$hypparams[2],")I(0,)")
+          prior.string2 <- paste0("dnorm(0, tau = ", 1/x$hypparams[2], ")")
+          prior.string22 <- paste0("T(dnorm(0, tau = ",1/x$hypparams[2],"), 0,)")
           }
      if(x$type[2] == "cauchy") {
-          prior.string2 <- paste0("dt(0,",1/x$hypparams[2],",1)")
-          prior.string22 <- paste0("dt(0,",1/x$hypparams[4],",1)I(0,)")
+          prior.string2 <- paste0("dt(0, tau = ",1/x$hypparams[2],",1)")
+          prior.string22 <- paste0("T(dt(0, tau = ",1/x$hypparams[4],",1), 0,)")
           }
      if(x$type[2] == "uniform") {
           prior.string2 <- paste0("dunif(-",x$hypparams[2],",",x$hypparams[2],")")
@@ -31,18 +31,18 @@ construct_prior_strings <- function(x) {
           }
      
      if(x$type[3] == "normal") 
-          prior.string3 <- paste0("dnorm(0,", 1/x$hypparams[3], ")")
+          prior.string3 <- paste0("dnorm(0, tau = ", 1/x$hypparams[3], ")")
      if(x$type[3] == "cauchy") 
-          prior.string3 <- paste0("dt(0,",1/x$hypparams[3],",1)")
+          prior.string3 <- paste0("dt(0, tau = ",1/x$hypparams[3],",1)")
      if(x$type[3] == "uniform") 
           prior.string3 <- paste0("dunif(-",x$hypparams[3],",",x$hypparams[3],")")
 
      if(x$type[4] == "uniform") 
           prior.string4 <- paste0("dunif(0,",x$hypparams[4],")")
      if(x$type[4] == "halfcauchy") 
-          prior.string4 <- paste0("dt(0,",1/x$hypparams[4],",1)I(0,)")
+          prior.string4 <- paste0("T(dt(0, tau = ",1/x$hypparams[4],",1),0,)")
      if(x$type[4] == "halfnormal") 
-          prior.string4 <- paste0("dnorm(0,",1/x$hypparams[4],")I(0,)")
+          prior.string4 <- paste0("T(dnorm(0, tau = ",1/x$hypparams[4],"),0,)")
      #if(x$type[4] == "gamma") prior.string4 <- paste0("dgamma(",1/x$hypparams[4],",",1/x$hypparams[4],")")
 
      return(list(p1 = prior.string1, p2 = prior.string2, p22 = prior.string22, p3 = prior.string3, p4 = prior.string4))
@@ -231,7 +231,7 @@ function() {
 # ## Process the rhats from multiple chained MCMC fit	
 # process.rhats <- function(sims.matrix) {
 #  		combined_fit_mcmc <- as.mcmc(sims.matrix)
-# 		fit.rhats <- rhats(jagsfit, asc = FALSE)
+# 		fit.rhats <- rhats(nimblefit, asc = FALSE)
 #     		make.rhatslist <- list(lv.coefs = matrix(fit.rhats[grep("lv.coefs", rownames(fit.rhats))], nrow = p))
 #     		#if(num.lv > 0) { fit.rhats <- fit.rhats[-grep("lvs",rownames(fit.rhats)),] } ## Drop check on lv
 #     		if(num.lv > 0) { make.rhatslist$lv.coefs <- as.matrix(make.rhatslist$lv.coefs[,-c(2:(num.lv+1))]) } ## Drop check on LV coefs

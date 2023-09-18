@@ -1,10 +1,10 @@
-make.jagsboralmodel <- function(family, num.X = 0, X.ind = NULL, num.traits = 0, which.traits = NULL,  
+make.nimbleboralmodel <- function(family, num.X = 0, X.ind = NULL, num.traits = 0, which.traits = NULL,  
      lv.control = list(num.lv = 2, type = "independent"), 
      row.eff = "none", row.ids = NULL, ranef.ids = NULL, 
      offset = NULL, trial.size = 1, n, p, model.name = NULL, 
      prior.control = list(type = c("normal","normal","normal","uniform"), hypparams = c(10, 10, 10, 30), ssvs.index = -1, ssvs.g = 1e-6, ssvs.traitsindex = -1), num.lv = NULL) {
                
-     check_which_traits(num.traits = num.traits, which.traits = which.traits, num.X = num.X, makejagsboralfile_messages = TRUE)
+     check_which_traits(num.traits = num.traits, which.traits = which.traits, num.X = num.X, makenimbleboralfile_messages = TRUE)
      if(is.null(which.traits)) { 
           which.traits <- vector("list",num.X+1)
           for(k in 1:(num.X+1)) 
@@ -62,11 +62,11 @@ make.jagsboralmodel <- function(family, num.X = 0, X.ind = NULL, num.traits = 0,
     
     
      ##-------------------
-     ## Checks done; starting writing JAGS script!
+     ## Checks done; starting writing Nimble script!
      ##-------------------
 
      
-     model_script <- paste0("## JAGS model written for boral version ", packageDescription("boral")$Version, " on ", as.character(Sys.time()), " ##\n\n model {")
+     model_script <- paste0( "nimbleCode ({", "\n\n ## Nimble model written for boral version ", packageDescription("boral")$Version, " on ", as.character(Sys.time()))
      model_script <- c(model_script, "\t ## Data Level ## \n\t for(i in 1:n) {")
     
      write.resp.script <- setup_respfamilies(p = p, complete.family = complete_family, num.lv = num.lv, row.eff = row.eff, row.ids = row.ids, ranef.ids = ranef.ids,
@@ -271,11 +271,11 @@ make.jagsboralmodel <- function(family, num.X = 0, X.ind = NULL, num.traits = 0,
           model_script <- c(model_script, paste0("\t for(j in 1:p) { lv.coefs[j,num.lv+2] ~ ", prior.strings$p4, " } ## Dispersion parameters")) 
           }
                     
-     model_script <- c(model_script, "\n\t }")
+     model_script <- c(model_script, "\n\t })")
 
      
      if(!is.null(model.name)) { write(model_script, file = model.name) }
-     if(is.null(model.name)) { write(model_script, file = "jagsboralmodel.txt") }
+     if(is.null(model.name)) { write(model_script, file = "nimbleboralmodel.txt") }
      }
 
 

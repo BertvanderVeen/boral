@@ -1,5 +1,5 @@
 ###############################
-## Sets up part of the JAGS script corresponding to family for responses; used in make.jagsboralmodel and make.jagsboralnullmodel. 
+## Sets up part of the Nimble script corresponding to family for responses; used in make.nimbleboralmodel and make.nimbleboralnullmodel. 
 ## Unseen function
 ###############################
 
@@ -76,13 +76,13 @@ setup_respfamilies <- function(p, complete.family, num.lv, row.eff, row.ids, ran
 			if(length(unique(complete.family)) == 1) {
 				if(j == 1) {
 					respfamily_script <- c(respfamily_script, paste0("\t\t for(j in 1:p) { u[i,j] <- 1/(1 + lv.coefs[j,num.lv+2]*exp(lv.coefs[j,1] + eta[i,j])) }"))
-					respfamily_script <- c(respfamily_script, paste0("\t\t for(j in 1:p) { y[i,j] ~ dnegbin(u[i,j], 1/lv.coefs[j,num.lv+2]) T(1,) } \n"))
+					respfamily_script <- c(respfamily_script, paste0("\t\t for(j in 1:p) { y[i,j] ~ T(dnegbin(u[i,j], 1/lv.coefs[j,num.lv+2]),1,) } \n"))
 					}
 				if(j > 1) { }
 				}
 			if(length(unique(complete.family)) > 1) {		
 				respfamily_script <- c(respfamily_script, paste0("\t\t u[i,",j, "] <- 1/(1 + lv.coefs[",j, ",num.lv+2]*exp(lv.coefs[",j, ",1] + eta[i,",j, "]))"))
-				respfamily_script <- c(respfamily_script, paste0("\t\t y[i,",j, "] ~ dnegbin(u[i,",j, "], 1/lv.coefs[",j, ",num.lv+2]) T(1,) \n"))
+				respfamily_script <- c(respfamily_script, paste0("\t\t y[i,",j, "] ~ T(dnegbin(u[i,",j, "], 1/lv.coefs[",j, ",num.lv+2]),1,) \n"))
 				}
 			}
                 
@@ -156,13 +156,13 @@ setup_respfamilies <- function(p, complete.family, num.lv, row.eff, row.ids, ran
           if(complete.family[j] == "ztpoisson") {
                if(length(unique(complete.family)) == 1) {
                     if(j == 1) {
-                         respfamily_script <- c(respfamily_script, paste0("\t\t for(j in 1:p) { y[i,j] ~ dpois(exp(lv.coefs[j,1] + eta[i,j])) T(1,) }\n"))
+                         respfamily_script <- c(respfamily_script, paste0("\t\t for(j in 1:p) { y[i,j] ~ T(dpois(exp(lv.coefs[j,1] + eta[i,j])),1,) }\n"))
                          }
                     if(j > 1) { }
                     }
                if(length(unique(complete.family)) > 1) 
                     {		
-                    respfamily_script <- c(respfamily_script, paste0("\t\t y[i,",j, "] ~ dpois(exp(lv.coefs[",j, ",1] + eta[i,",j, "])) T(1,) \n"))
+                    respfamily_script <- c(respfamily_script, paste0("\t\t y[i,",j, "] ~ T(dpois(exp(lv.coefs[",j, ",1] + eta[i,",j, "])),1,) \n"))
                     }
                }	
 

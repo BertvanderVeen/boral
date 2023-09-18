@@ -160,7 +160,7 @@ get.dic <- function(jagsfit) {
 
 ## Simple extraction of MCMC samples from fitted boral object
 get.mcmcsamples <- function(object) {
-     fit.mcmc <- object$jags.model$BUGSoutput
+     fit.mcmc <- object$nimble.model$BUGSoutput
      if(is.null(fit.mcmc)) 
           stop("MCMC samples not found. Please use save.model = TRUE to save MCMC samples when using boral.")
      fit.mcmc <- mcmc(fit.mcmc$sims.matrix, start = 1, thin = object$mcmc.control$n.thin) ## Thanks to Guilliaume Blanchet for the original formatting!

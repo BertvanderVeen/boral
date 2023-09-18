@@ -16,8 +16,8 @@ get.more.measures,
 get.mcmcsamples,
 get.residual.cor, 
 lvsplot,
-make.jagsboralmodel, 
-make.jagsboralnullmodel,
+make.nimbleboralmodel, 
+make.nimbleboralnullmodel,
 predict.boral,
 plot.boral,
 ranefsplot, 
@@ -39,7 +39,7 @@ importFrom(abind, abind)
 import(coda, mvtnorm, fishMod, MASS)
 importFrom(corpcor, cor2pcor, pseudoinverse)
 importFrom(lifecycle,deprecate_stop, deprecate_warn, deprecate_soft)
-importFrom(R2jags, jags)
+importFrom(nimble, nimbleModel, compileNimble, configureMCMC, buildMCMC, compileNimble, runMCMC)
 importFrom(reshape2, melt)
 importFrom(stats, as.formula, model.matrix)
 importFrom(stats, dbeta, pbeta, qbeta, rbeta)
